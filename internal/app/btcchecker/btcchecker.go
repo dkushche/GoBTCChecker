@@ -3,19 +3,22 @@ package btcchecker
 import (
 	"fmt"
 	"net/http"
-	
-	"github.com/sirupsen/logrus"
+
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
+
+	"github.com/dkushche/GoBTCChecker/store"
 )
 
 type BTCChecker struct {
 	config *Config
 	logger *logrus.Logger
 	router *mux.Router
+	store  *store.Store
 }
 
 func New(config *Config) *BTCChecker {
-	return &BTCChecker {
+	return &BTCChecker{
 		config: config,
 		logger: logrus.New(),
 		router: mux.NewRouter(),
@@ -26,9 +29,15 @@ func (s *BTCChecker) Start() error {
 	if err := s.ConfigureLogger(); err != nil {
 		return err
 	}
+	s.logger.Info("Logger successfully configurated")
+	if err := s.ConfigureStore(); err != nil {
+		return err
+	}
+	s.logger.Info("Storage successfully configurated")
+
 	s.ConfigureRouter()
 
-	s.logger.Info("starting server")
+	s.logger.Info("Starting server")
 
 	return http.ListenAndServe(s.config.BindAddr, s.router)
 }
@@ -40,6 +49,17 @@ func (s *BTCChecker) ConfigureLogger() error {
 	}
 
 	s.logger.SetLevel(level)
+
+	return nil
+}
+
+func (s *BTCChecker) ConfigureStore() error {
+	st, err := store.New(s.config.Store)
+	if err != nil {
+		return err
+	}
+
+	s.store = st
 
 	return nil
 }

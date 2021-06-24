@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	configPath string 
+	configPath string
 )
 
 func init() {
 	flag.StringVar(&configPath, "config-path", "configs/btcchecker.toml",
-				   "path to config file")
+		"path to config file")
 }
 
 func main() {
@@ -27,9 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s := btcchecker.New(config)
-
-	if err := s.Start(); err != nil {
+	if err := btcchecker.Start(config); err != nil {
 		log.Fatal(err)
 	}
 }

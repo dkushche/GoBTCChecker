@@ -1,4 +1,4 @@
 btcchecker
-!cmd
-!internal
+!cmd/btcchecker
+!internal/app/btcchecker
 *.csv

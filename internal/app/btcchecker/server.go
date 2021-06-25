@@ -6,16 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/dkushche/GoBTCChecker/storage"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	sessionName        = "btcchecker"
-	contextKey  ctxKey = iota
+	sessionName            = "btcchecker"
+	contextKey      ctxKey = iota
+	ctxKeyRequestID ctxKey = iota
 )
 
 type ctxKey int8
@@ -48,12 +51,41 @@ func NewServer(storage *storage.Storage, log_level string,
 }
 
 func (s *server) configureRouter() {
+	s.router.Use(s.setRequestID)
+	s.router.Use(s.logRequest)
 	s.router.HandleFunc("/user/create", s.handleUserCreate()).Methods("POST")
 	s.router.HandleFunc("/user/login", s.handleUserLogin()).Methods("POST")
 
 	private := s.router.NewRoute().Subrouter()
+	private.Use(s.setRequestID)
+	private.Use(s.logRequest)
 	private.Use(s.authenticateUser)
 	private.HandleFunc("/btcRate", s.handleBTCRate()).Methods("GET")
+}
+
+func (s *server) setRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := uuid.New().String()
+		w.Header().Set("X-Request-ID", id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKeyRequestID, id)))
+	})
+}
+
+func (s *server) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := s.logger.WithFields(logrus.Fields{
+			"remote_addr": r.RemoteAddr,
+			"request_id":  r.Context().Value(ctxKeyRequestID),
+		})
+		logger.Infof("started %s %s", r.Method, r.RequestURI)
+
+		start := time.Now()
+
+		rw := &responseWriter{w, http.StatusOK}
+		next.ServeHTTP(rw, r)
+
+		logger.Infof("completed in %v", time.Now().Sub(start))
+	})
 }
 
 func (s *server) authenticateUser(next http.Handler) http.Handler {

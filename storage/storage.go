@@ -48,18 +48,28 @@ func New(database_path string) (*Storage, error) {
 	}, nil
 }
 
+func (s *Storage) Find(email string) (string, error) {
+	hash, exists := s.database[email]
+	if exists {
+		return hash, nil
+	}
+	return "", errors.New("incorrect email or password")
+}
+
 func (s *Storage) UserAuth(email string, password string) error {
 	if err := s.validate(email, password); err != nil {
 		return err
 	}
 
-	hash, exists := s.database[email]
-	if exists {
-		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-		if err == nil {
-			return nil
-		}
+	hash, err := s.Find(email)
+	if err != nil {
+		return err
 	}
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err == nil {
+		return nil
+	}
+
 	return errors.New("incorrect email or password")
 }
 

@@ -67,11 +67,13 @@ func (s *server) authenticateUser(next http.Handler) http.Handler {
 		email, exists := session.Values["user_email"]
 		if !exists {
 			s.error(w, r, http.StatusUnauthorized, errors.New("Unauthorized"))
+			return
 		}
 
 		_, err = s.storage.Find(email.(string))
 		if err != nil {
 			s.error(w, r, http.StatusUnauthorized, err)
+			return
 		}
 
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), contextKey, email)))

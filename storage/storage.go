@@ -78,6 +78,11 @@ func (s *Storage) AddUser(email string, password string) error {
 		return err
 	}
 
+	_, err := s.Find(email)
+	if err == nil {
+		return errors.New("incorrect email or password")
+	}
+
 	hashed_password, err := s.encrypt(password)
 	if err != nil {
 		return err

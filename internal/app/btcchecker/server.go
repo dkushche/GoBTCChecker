@@ -55,9 +55,7 @@ func (s *server) configureRouter() {
 	s.router.HandleFunc("/user/create", s.handleUserCreate()).Methods("POST")
 	s.router.HandleFunc("/user/login", s.handleUserLogin()).Methods("POST")
 
-	private := s.router.NewRoute().Subrouter()
-	private.Use(s.setRequestID)
-	private.Use(s.logRequest)
+	private := s.router.PathPrefix("/").Subrouter()
 	private.Use(s.authenticateUser)
 	private.HandleFunc("/btcRate", s.handleBTCRate()).Methods("GET")
 }
@@ -168,28 +166,16 @@ func (s *server) handleUserLogin() http.HandlerFunc {
 
 func (s *server) handleBTCRate() http.HandlerFunc {
 	type response struct {
-		Status bool `json:"status"`
-		BtcUah struct {
-			Sell          string `json:"sell"`
-			CurrencyTrade string `json:"currency_trade"`
-			BuyUsd        string `json:"buy_usd"`
-			Buy           string `json:"buy"`
-			Last          string `json:"last"`
-			Updated       int    `json:"updated"`
-			Vol           string `json:"vol"`
-			SellUsd       string `json:"sell_usd"`
-			LastUsd       string `json:"last_usd"`
-			CurrencyBase  string `json:"currency_base"`
-			VolCur        string `json:"vol_cur"`
-			High          string `json:"high"`
-			Low           string `json:"low"`
-			VolCurUsd     string `json:"vol_cur_usd"`
-			Avg           string `json:"avg"`
-			UsdRate       string `json:"usd_rate"`
-		} `json:"btc_uah"`
+		Data struct {
+			Base     string `json:"base"`
+			Currency string `json:"currency"`
+			Amount   string `json:"amount"`
+		} `json:"data"`
 	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		json_resp, err := http.Get("https://btc-trade.com.ua/api/ticker/btc_uah")
+		json_resp, err := http.Get("https://api.coinbase.com/v2/prices/BTC-UAH/buy")
+
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, errors.New("can't get the price"))
 		}
@@ -200,12 +186,12 @@ func (s *server) handleBTCRate() http.HandlerFunc {
 			return
 		}
 
-		if resp.Status {
-			s.respond(w, r, http.StatusOK, resp.BtcUah.Sell)
+		if resp.Data.Base == "BTC" && resp.Data.Currency == "UAH" {
+			s.respond(w, r, http.StatusOK, resp.Data.Amount)
 			return
 		}
 
-		s.error(w, r, http.StatusInternalServerError, errors.New("incorrect status"))
+		s.error(w, r, http.StatusInternalServerError, errors.New("incorrect exchange response"))
 	}
 }
 

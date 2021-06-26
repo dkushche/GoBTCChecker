@@ -12,17 +12,17 @@ import (
 )
 
 type Storage struct {
-	database_path string
-	database      map[string]string
+	storage_path string
+	database     map[string]string
 }
 
-func New(database_path string) (*Storage, error) {
+func New(storage_path string) (*Storage, error) {
 	var file *os.File
 	database := make(map[string]string)
 
-	file, err := os.Open(database_path)
+	file, err := os.Open(storage_path)
 	if err != nil {
-		if file, err = os.Create(database_path); err != nil {
+		if file, err = os.Create(storage_path); err != nil {
 			return nil, err
 		}
 	} else {
@@ -43,8 +43,8 @@ func New(database_path string) (*Storage, error) {
 	file.Close()
 
 	return &Storage{
-		database_path: database_path,
-		database:      database,
+		storage_path: storage_path,
+		database:     database,
 	}, nil
 }
 
@@ -120,7 +120,7 @@ func (s *Storage) encrypt(password string) (string, error) {
 }
 
 func (s *Storage) save(email string, hashed_password string) error {
-	file, err := os.OpenFile(s.database_path, os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(s.storage_path, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -84,7 +83,7 @@ func (s *server) logRequest(next http.Handler) http.Handler {
 		rw := &responseWriter{w, http.StatusOK}
 		next.ServeHTTP(rw, r)
 
-		logger.Infof("completed in %v", time.Now().Sub(start))
+		logger.Infof("completed with code %d(%s) in %v", rw.code, http.StatusText(rw.code), time.Since(start))
 	})
 }
 
@@ -168,8 +167,45 @@ func (s *server) handleUserLogin() http.HandlerFunc {
 }
 
 func (s *server) handleBTCRate() http.HandlerFunc {
+	type response struct {
+		Status bool `json:"status"`
+		BtcUah struct {
+			Sell          string `json:"sell"`
+			CurrencyTrade string `json:"currency_trade"`
+			BuyUsd        string `json:"buy_usd"`
+			Buy           string `json:"buy"`
+			Last          string `json:"last"`
+			Updated       int    `json:"updated"`
+			Vol           string `json:"vol"`
+			SellUsd       string `json:"sell_usd"`
+			LastUsd       string `json:"last_usd"`
+			CurrencyBase  string `json:"currency_base"`
+			VolCur        string `json:"vol_cur"`
+			High          string `json:"high"`
+			Low           string `json:"low"`
+			VolCurUsd     string `json:"vol_cur_usd"`
+			Avg           string `json:"avg"`
+			UsdRate       string `json:"usd_rate"`
+		} `json:"btc_uah"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "BTC to grivna")
+		json_resp, err := http.Get("https://btc-trade.com.ua/api/ticker/btc_uah")
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, errors.New("can't get the price"))
+		}
+
+		resp := &response{}
+		if err := json.NewDecoder(json_resp.Body).Decode(resp); err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		if resp.Status {
+			s.respond(w, r, http.StatusOK, resp.BtcUah.Sell)
+			return
+		}
+
+		s.error(w, r, http.StatusInternalServerError, errors.New("incorrect status"))
 	}
 }
 

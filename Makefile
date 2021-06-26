@@ -5,5 +5,5 @@ build:
 	go build -v ./cmd/btcchecker
 
 clean:
-	rm btcchecker
-	rm $(shell find -name *.csv)
+	rm -f btcchecker
+	rm -f $(shell find -name *.csv)

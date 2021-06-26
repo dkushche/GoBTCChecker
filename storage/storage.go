@@ -66,11 +66,11 @@ func (s *Storage) UserAuth(email string, password string) error {
 		return err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err == nil {
-		return nil
+	if err != nil {
+		return errors.New("incorrect email or password")
 	}
 
-	return errors.New("incorrect email or password")
+	return nil
 }
 
 func (s *Storage) AddUser(email string, password string) error {
@@ -125,7 +125,7 @@ func (s *Storage) save(email string, hashed_password string) error {
 		return err
 	}
 
-	_, err = file.WriteString(email + ", " + hashed_password)
+	_, err = file.WriteString(email + "," + hashed_password + "\n")
 	if err != nil {
 		return err
 	}
